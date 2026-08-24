@@ -21,6 +21,7 @@
   --warm:#8A5410;
   --cool:#5F716C;
   --gold:#7A5B00; --gold-soft:#F0E7CC; --gold-line:#C9A94A;
+  --kr:#42527E; --kr-soft:#E4E8F3; --kr-line:#98A5C6;
   --card:#FFFFFF; --card-2:#EFF3F1; --card-edge:rgba(17,25,23,.10);
   --display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -34,6 +35,7 @@
   --warm:#D9A961;
   --cool:#8C9E99;
   --gold:#E0C075; --gold-soft:#2E2711; --gold-line:#7A6532;
+  --kr:#A7B4E0; --kr-soft:#1B2138; --kr-line:#454F76;
   --card:#202A28; --card-2:#151D1C; --card-edge:rgba(0,0,0,.5);
 }}
 :root[data-theme="dark"]{
@@ -45,6 +47,7 @@
   --warm:#D9A961;
   --cool:#8C9E99;
   --gold:#E0C075; --gold-soft:#2E2711; --gold-line:#7A6532;
+  --kr:#A7B4E0; --kr-soft:#1B2138; --kr-line:#454F76;
   --card:#202A28; --card-2:#151D1C; --card-edge:rgba(0,0,0,.5);
 }
 
@@ -200,6 +203,9 @@ html.no-anim .fd.go .tf,html.no-anim .fd.go .bf{animation:none;visibility:hidden
 .slot .sub{font-family:var(--mono);font-size:.79rem;color:var(--ink-2);margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot .sub em{font-style:normal;color:var(--muted)}
+.tchip.kr,.hero .meta b.kr{background:var(--kr-soft);color:var(--kr);border-color:var(--kr-line);font-weight:600;font-style:normal}
+.hero .meta b.kr{padding:0 5px;border:1px solid var(--kr-line);border-radius:2px}
+ul.all .t .d b.kr{color:var(--kr);font-weight:700}
 .slot .tchip{
   font-family:var(--mono);font-size:.58rem;padding:0 4px;border-radius:2px;margin-left:6px;
   border:1px solid currentColor;opacity:.55;vertical-align:1px;
@@ -368,7 +374,7 @@ const KST = 9 * 60; // 분
 
 let CONF = [], TOTAL = 0, SEL = new Set();
 const LS = {
-  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim",
+  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim", seen: "cr.seen",
   get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, v); } catch {} }
 };
@@ -488,6 +494,7 @@ function milestone(c, now){                        // 다음으로 닥친 관문
 
 /* ── 상태 ──────────────────────────────── */
 const FLD = { robotics: "로보틱스", ml: "ML/DL", vision: "비전", lang: "음성·NLP", med: "의료영상" };
+const tierTag = t => t === 0 ? '<b class="kr">국내</b>' : "T" + t;   // 국내 학회는 T 등급 대신 표기
 let filters = { field: "all", t1: false, conf: false, past: true };
 let heroCells = null, remCells = null, clockCells = null, heroId = null, stackCd = [];
 let showSec = LS.get(LS.sec, "0") === "1";
@@ -526,7 +533,7 @@ function renderHero(list, now){
       </div>
       <div class="rem"><span class="remlbl">남은 시간</span><span class="flipset" id="remF"></span></div>
       <div class="meta">
-        <span>T${c.tier}</span><span>${FLD[c.field]}</span><span>${c.pages}</span><span>${c.venue}</span>
+        <span>${tierTag(c.tier)}</span><span>${FLD[c.field]}</span><span>${c.pages}</span><span>${c.pub}</span><span>${c.venue}</span>
       </div>
       ${c.note ? `<p class="cav">${c.note}</p>` : ""}`;
     heroCells = makeFlip(document.getElementById("heroF"), dw,
@@ -555,7 +562,7 @@ function renderStack(list, now){
       <span class="gauge"></span>
       <span class="dd"><small>D-</small>${d}</span>
       <div class="info">
-        <div class="nm">${c.name}<span class="tchip">T${c.tier}</span></div>
+        <div class="nm">${c.name}<span class="tchip${c.tier===0?" kr":""}">${c.tier===0?"국내":"T"+c.tier}</span></div>
         <div class="sub">${m.kind} <strong>${fmtKST(m.at)}</strong> <em>KST${c.est ? " · 예상" : ""}</em></div>
       </div>
       <div class="cd"><b data-at="${m.at}">${hms(m.at - now)}</b><i>남은 시간</i></div>
@@ -588,7 +595,7 @@ function renderAll(now){
       <input type="checkbox" data-i="${c.idx}" ${on ? "checked" : ""} id="cb${c.idx}">
       <label class="t" for="cb${c.idx}">
         <div class="n">${c.name}</div>
-        <div class="d">T${c.tier} · ${c.est ? "예상" : "확정"} · ${m ? m.kind + " " + fmtKST(m.at) : "종료"}</div>
+        <div class="d">${tierTag(c.tier)} · ${c.est ? "예상" : "확정"} · ${m ? m.kind + " " + fmtKST(m.at) : "종료"}</div>
       </label>
       <span class="rt">${m ? "D-" + d : "—"}</span>
     </li>`;
@@ -753,6 +760,15 @@ function wire(){
   SEL = fromUrl ? decodeSel(fromUrl)
        : (LS.get(LS.sel, null) !== null ? decodeSel(LS.get(LS.sel, "")) : defaults());
   if (!fromUrl && LS.get(LS.sel, null) === null) saveSel();
+
+  // 저장소에 새로 추가된 학회 중 def:true 인 것은 자동으로 체크해 준다.
+  // 이게 없으면 이미 선택을 저장해 둔 사람에게는 새 학회가 영영 안 뜬다.
+  if (!fromUrl){
+    const seen = parseInt(LS.get(LS.seen, "-1"), 10);
+    const fresh = CONF.filter(c => c.idx > seen && c.def);
+    if (fresh.length){ fresh.forEach(c => SEL.add(c.idx)); saveSel(); }
+    LS.set(LS.seen, String(TOTAL - 1));
+  }
 
   const now = Date.now(), list = checked(now);
   renderHero(list, now); renderStack(list, now); renderClock(now); badge(list, now);
