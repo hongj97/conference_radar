@@ -255,6 +255,15 @@ ul.all .rt{font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--
   text-align:right;flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
 ul.all li.past{opacity:.4}
 .hint{font-size:.7rem;color:var(--muted);padding:7px 2px 0;line-height:1.5}
+.wallcfg{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 2px 2px;
+  font-size:.72rem;color:var(--muted)}
+.wallcfg label{display:flex;gap:6px;align-items:center}
+.wallcfg label.grow{flex:1 1 150px}
+.wallcfg select{font:inherit;font-size:.72rem;background:var(--surface);color:var(--ink);
+  border:1px solid var(--rule-strong);border-radius:4px;padding:2px 4px}
+.wallcfg input[type=range]{flex:1;min-width:80px;accent-color:var(--accent);height:16px}
+.wallcfg b{font-family:var(--mono);font-size:.72rem;color:var(--ink-2);min-width:3.2ch;
+  font-variant-numeric:tabular-nums}
 .act{display:flex;gap:6px;flex-wrap:wrap;padding-top:9px}
 .btn{
   font-size:.73rem;font-weight:600;padding:5px 11px;border-radius:4px;
@@ -276,7 +285,12 @@ ul.all li.past{opacity:.4}
    - ?pos= 로 화면 어느 구석에 붙일지, ?scale= 로 크기를 정한다
    - 모든 치수가 --u 배수라 scale 하나로 전체가 비례해 줄고 는다 */
 body.wall{
-  --u:1vw;
+  /* 치수 기준. vw 로 잡으면 화면 비율에 따라 크기가 달라져서
+     3413x1440 같은 울트라와이드에서는 1vw 가 34px 이 되어 세로를 꽉 채운다.
+     위젯은 어느 모니터에서든 같은 물리 크기여야 하고, 미리보기가
+     실제 배경화면과 일치해야 하므로 고정 px 로 두고 --s 로만 조절한다. */
+  --s:1;
+  --u:calc(15px * var(--s));
   background:radial-gradient(120% 100% at 12% 0%,#12211F 0%,#080C0B 62%);
   background-size:cover;background-position:center;
   color:#E9F1EE;font-size:16px;overflow:hidden;
@@ -284,7 +298,7 @@ body.wall{
 }
 body.wall .app{
   max-width:none;width:auto;min-width:calc(var(--u)*34);max-width:calc(var(--u)*62);
-  max-height:94vh;height:auto;margin:0;padding:0;
+  max-height:min(94vh, calc(var(--u) * 58));height:auto;margin:0;padding:0;
   gap:calc(var(--u)*.9);overflow:hidden;
 }
 body.wall.v-t{align-items:flex-start} body.wall.v-c{align-items:center} body.wall.v-b{align-items:flex-end}
@@ -350,8 +364,22 @@ body.wall{--card:#1B2624;--card-2:#141C1B;--card-edge:rgba(0,0,0,.6);--bg:#080C0
         <button class="f" data-k="past" aria-pressed="true">지난 마감 숨김</button>
       </div>
       <ul class="all" id="all"></ul>
+      <div class="wallcfg">
+        <label>위치
+          <select id="wpos">
+            <option value="tl">↖ 좌상</option><option value="t">↑ 상단</option><option value="tr">↗ 우상</option>
+            <option value="l">← 좌측</option><option value="c">· 중앙</option><option value="r">→ 우측</option>
+            <option value="bl">↙ 좌하</option><option value="b">↓ 하단</option><option value="br">↘ 우하</option>
+          </select>
+        </label>
+        <label class="grow">크기
+          <input type="range" id="wscale" min="0.4" max="2.5" step="0.05" value="1">
+          <b id="wscaleV">1.00</b>
+        </label>
+      </div>
       <div class="act">
-        <button class="btn" id="copyWall">바탕화면 URL 복사</button>
+        <button class="btn pri" id="copyWall">바탕화면 URL 복사</button>
+        <button class="btn" id="previewWall">미리보기</button>
         <button class="btn" id="testNoti">알림 테스트</button>
         <button class="btn" id="resetSel">기본값으로</button>
       </div>
@@ -374,7 +402,7 @@ const KST = 9 * 60; // 분
 
 let CONF = [], TOTAL = 0, SEL = new Set();
 const LS = {
-  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim", seen: "cr.seen",
+  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim", seen: "cr.seen", wpos: "cr.wpos", wsc: "cr.wsc",
   get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, v); } catch {} }
 };
@@ -628,8 +656,13 @@ function tick(){
     if (!WALL) renderAll(now);
     badge(list, now);
   }
-  document.getElementById("foot").textContent =
-    `${list.length}건 추적 · 데이터 ${window.__ver ?? ""}`;
+  const foot = document.getElementById("foot");
+  foot.textContent = `${list.length}건 추적 · 데이터 ${window.__ver ?? ""}`;
+  if (QS.get("debug") === "1"){
+    const u = getComputedStyle(document.body).getPropertyValue("--u").trim();
+    foot.textContent += ` · 뷰포트 ${innerWidth}×${innerHeight} · DPR ${devicePixelRatio}`
+      + ` · --u ${u} · 슬롯 ${document.querySelectorAll(".slot").length}`;
+  }
 }
 
 /* ── 알림 ──────────────────────────────── */
@@ -689,11 +722,25 @@ function wire(){
     }
     renderAll(Date.now());
   });
+  const wpos = document.getElementById("wpos"), wsc = document.getElementById("wscale"),
+        wscV = document.getElementById("wscaleV");
+  wpos.value = LS.get(LS.wpos, "tl");
+  wsc.value  = LS.get(LS.wsc, "1");
+  const paintScale = () => wscV.textContent = (+wsc.value).toFixed(2);
+  paintScale();
+  wpos.onchange = () => LS.set(LS.wpos, wpos.value);
+  wsc.oninput   = () => { paintScale(); LS.set(LS.wsc, wsc.value); };
+
+  // pos·scale 을 빼먹으면 배경화면에서 기본 크기로 커져버린다. 항상 붙인다.
+  const wallURL = () => `${location.origin}${location.pathname}`
+    + `?mode=wall&pos=${wpos.value}&scale=${(+wsc.value).toFixed(2)}&s=${encodeSel(SEL)}`;
+
   document.getElementById("copyWall").onclick = async () => {
-    const u = `${location.origin}${location.pathname}?mode=wall&s=${encodeSel(SEL)}`;
-    try { await navigator.clipboard.writeText(u); toast("배경화면 URL을 복사했습니다"); }
+    const u = wallURL();
+    try { await navigator.clipboard.writeText(u); toast("바탕화면 URL을 복사했습니다"); }
     catch { prompt("아래 주소를 복사하세요", u); }
   };
+  document.getElementById("previewWall").onclick = () => window.open(wallURL(), "_blank", "noopener");
   document.getElementById("testNoti").onclick = async () => {
     if (Notification.permission !== "granted"){
       const p = await Notification.requestPermission();
@@ -747,7 +794,7 @@ function wire(){
     const h = /l/.test(pos) ? "l" : /r/.test(pos) ? "r" : "c";
     document.body.classList.add("v-" + v, "h-" + h);
     const sc = parseFloat(QS.get("scale"));
-    if (sc > 0) document.body.style.setProperty("--u", `calc(1vw * ${Math.min(2, Math.max(.35, sc))})`);
+    if (sc > 0) document.body.style.setProperty("--s", String(Math.min(3, Math.max(.4, sc))));
     const bg = QS.get("bg");
     if (bg) document.body.style.backgroundImage =
       `linear-gradient(rgba(6,10,9,.55),rgba(6,10,9,.72)), url("${encodeURI(bg)}")`;
