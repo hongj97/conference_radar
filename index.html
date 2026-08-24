@@ -461,7 +461,11 @@ function makeFlip(host, count, opt){
 }
 /* auto = OS 설정 따름 · on/off = 사용자가 명시적으로 덮어씀 */
 const MQ_REDUCE = matchMedia("(prefers-reduced-motion: reduce)");
-let animPref = LS.get(LS.anim, "auto"), ANIM = true;
+// Lively 등 다른 브라우저에서 띄울 때는 localStorage 를 공유하지 못하므로
+// ?anim=1|0 으로도 강제할 수 있어야 한다. URL 이 있으면 그쪽이 우선.
+const Q_ANIM = (v => v === "1" || v === "on" ? "on"
+                   : v === "0" || v === "off" ? "off" : null)(QS.get("anim"));
+let animPref = Q_ANIM ?? LS.get(LS.anim, "auto"), ANIM = true;
 function applyAnim(){
   ANIM = animPref === "on" ? true : animPref === "off" ? false : !MQ_REDUCE.matches;
   document.documentElement.classList.toggle("no-anim", !ANIM);
@@ -672,7 +676,8 @@ function tick(){
   if (QS.get("debug") === "1"){
     const u = getComputedStyle(document.body).getPropertyValue("--u").trim();
     foot.textContent += ` · 뷰포트 ${innerWidth}×${innerHeight} · DPR ${devicePixelRatio}`
-      + ` · --u ${u} · 슬롯 ${document.querySelectorAll(".slot").length}`;
+      + ` · --u ${u} · 슬롯 ${document.querySelectorAll(".slot").length}`
+      + ` · anim ${ANIM ? "on" : "off"}(${animPref}) · reduce ${MQ_REDUCE.matches}`;
   }
 }
 
@@ -744,7 +749,8 @@ function wire(){
 
   // pos·scale 을 빼먹으면 배경화면에서 기본 크기로 커져버린다. 항상 붙인다.
   const wallURL = () => `${location.origin}${location.pathname}`
-    + `?mode=wall&pos=${wpos.value}&scale=${(+wsc.value).toFixed(2)}&s=${encodeSel(SEL)}`;
+    + `?mode=wall&pos=${wpos.value}&scale=${(+wsc.value).toFixed(2)}`
+    + `&anim=${ANIM ? 1 : 0}&s=${encodeSel(SEL)}`;
 
   document.getElementById("copyWall").onclick = async () => {
     const u = wallURL();
@@ -809,7 +815,7 @@ function wire(){
   paintAnim();
   ab.onclick = () => {
     animPref = ANIM ? "off" : "on";          // 한 번 누르면 시스템 설정을 덮어쓴다
-    LS.set(LS.anim, animPref); applyAnim(); paintAnim();
+    LS.set(LS.anim, animPref); applyAnim(); paintAnim(); queuePreview();
     toast(ANIM ? "종이 넘김 효과를 켰습니다" : "넘김 효과를 껐습니다");
   };
 
