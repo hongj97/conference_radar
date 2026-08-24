@@ -264,6 +264,13 @@ ul.all li.past{opacity:.4}
 .wallcfg input[type=range]{flex:1;min-width:80px;accent-color:var(--accent);height:16px}
 .wallcfg b{font-family:var(--mono);font-size:.72rem;color:var(--ink-2);min-width:3.2ch;
   font-variant-numeric:tabular-nums}
+/* 실제 화면 비율 그대로 축소한 미리보기. 창 크기에 따라 비율이 왜곡되는 걸 막는다 */
+.wallprev{margin-top:10px}
+.wallprev .screen{position:relative;width:100%;overflow:hidden;background:#080C0B;
+  border:1px solid var(--rule-strong);border-radius:4px}
+.wallprev iframe{position:absolute;top:0;left:0;border:0;transform-origin:0 0;pointer-events:none}
+.wallprev .cap{font-family:var(--mono);font-size:.62rem;color:var(--muted);
+  padding-top:5px;text-align:center;font-variant-numeric:tabular-nums}
 .act{display:flex;gap:6px;flex-wrap:wrap;padding-top:9px}
 .btn{
   font-size:.73rem;font-weight:600;padding:5px 11px;border-radius:4px;
@@ -379,9 +386,13 @@ body.wall{--card:#1B2624;--card-2:#141C1B;--card-edge:rgba(0,0,0,.6);--bg:#080C0
       </div>
       <div class="act">
         <button class="btn pri" id="copyWall">바탕화면 URL 복사</button>
-        <button class="btn" id="previewWall">미리보기</button>
+        <button class="btn toggleprev" id="previewWall" aria-pressed="false">미리보기</button>
         <button class="btn" id="testNoti">알림 테스트</button>
         <button class="btn" id="resetSel">기본값으로</button>
+      </div>
+      <div class="wallprev" id="wallprev" hidden>
+        <div class="screen" id="prevScreen"><iframe id="prevFrame" title="배경화면 미리보기" tabindex="-1"></iframe></div>
+        <div class="cap" id="prevCap"></div>
       </div>
       <p class="hint">
         체크한 학회만 위에 표시되고 알림이 옵니다. 초록 마감이 남아 있으면 초록을, 지났으면 본문을 기준으로 셉니다.<br>
@@ -708,7 +719,7 @@ function wire(){
     const i = +e.target.dataset.i;
     if (Number.isNaN(i)) return;
     e.target.checked ? SEL.add(i) : SEL.delete(i);
-    saveSel(); const now = Date.now(); const l = checked(now);
+    saveSel(); queuePreview(); const now = Date.now(); const l = checked(now);
     renderHero(l, now); renderStack(l, now); renderAll(now); badge(l, now);
   });
   document.getElementById("filters").addEventListener("click", e => {
@@ -728,8 +739,8 @@ function wire(){
   wsc.value  = LS.get(LS.wsc, "1");
   const paintScale = () => wscV.textContent = (+wsc.value).toFixed(2);
   paintScale();
-  wpos.onchange = () => LS.set(LS.wpos, wpos.value);
-  wsc.oninput   = () => { paintScale(); LS.set(LS.wsc, wsc.value); };
+  wpos.onchange = () => { LS.set(LS.wpos, wpos.value); queuePreview(); };
+  wsc.oninput   = () => { paintScale(); LS.set(LS.wsc, wsc.value); queuePreview(); };
 
   // pos·scale 을 빼먹으면 배경화면에서 기본 크기로 커져버린다. 항상 붙인다.
   const wallURL = () => `${location.origin}${location.pathname}`
@@ -740,7 +751,35 @@ function wire(){
     try { await navigator.clipboard.writeText(u); toast("바탕화면 URL을 복사했습니다"); }
     catch { prompt("아래 주소를 복사하세요", u); }
   };
-  document.getElementById("previewWall").onclick = () => window.open(wallURL(), "_blank", "noopener");
+  // 새 탭 미리보기는 창 크기가 실제 화면과 달라 비율이 왜곡된다.
+  // 실제 화면 해상도(screen.width/height)만큼 iframe 을 만들고 통째로 축소해서 보여준다.
+  const prevBox = document.getElementById("wallprev"),
+        prevScr = document.getElementById("prevScreen"),
+        prevFr  = document.getElementById("prevFrame"),
+        prevCap = document.getElementById("prevCap"),
+        prevBtn = document.getElementById("previewWall");
+  let prevOn = false, prevT = 0;
+
+  function drawPreview(){
+    if (!prevOn) return;
+    const sw = screen.width || 1920, sh = screen.height || 1080;
+    const w = prevScr.clientWidth || 400, k = w / sw;
+    prevScr.style.height = Math.round(sh * k) + "px";
+    prevFr.style.width = sw + "px";
+    prevFr.style.height = sh + "px";
+    prevFr.style.transform = `scale(${k})`;
+    prevFr.src = wallURL();
+    prevCap.textContent = `실제 화면 ${sw}×${sh} 기준 · ${(k * 100).toFixed(1)}% 축소`;
+  }
+  const queuePreview = () => { clearTimeout(prevT); prevT = setTimeout(drawPreview, 260); };
+
+  prevBtn.onclick = () => {
+    prevOn = !prevOn;
+    prevBox.hidden = !prevOn;
+    prevBtn.setAttribute("aria-pressed", String(prevOn));
+    if (prevOn) drawPreview(); else prevFr.removeAttribute("src");   // 꺼두면 타이머도 멈춘다
+  };
+  addEventListener("resize", queuePreview);
   document.getElementById("testNoti").onclick = async () => {
     if (Notification.permission !== "granted"){
       const p = await Notification.requestPermission();
