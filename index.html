@@ -372,6 +372,12 @@ body.wall{--card:#1B2624;--card-2:#141C1B;--card-edge:rgba(0,0,0,.6);--bg:#080C0
       </div>
       <ul class="all" id="all"></ul>
       <div class="wallcfg">
+        <label>목록
+          <select id="wmode">
+            <option value="pick">체크한 것</option>
+            <option value="auto">자동 · 다가오는 순</option>
+          </select>
+        </label>
         <label>위치
           <select id="wpos">
             <option value="tl">↖ 좌상</option><option value="t">↑ 상단</option><option value="tr">↗ 우상</option>
@@ -413,7 +419,7 @@ const KST = 9 * 60; // 분
 
 let CONF = [], TOTAL = 0, SEL = new Set();
 const LS = {
-  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim", seen: "cr.seen", wpos: "cr.wpos", wsc: "cr.wsc",
+  sel: "cr.sel", noti: "cr.lastNoti", sec: "cr.sec", anim: "cr.anim", seen: "cr.seen", wpos: "cr.wpos", wsc: "cr.wsc", wmode: "cr.wmode",
   get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set(k, v){ try { localStorage.setItem(k, v); } catch {} }
 };
@@ -544,8 +550,30 @@ let showSec = LS.get(LS.sec, "0") === "1";
 
 function defaults(){ return new Set(CONF.filter(c => c.def).map(c => c.idx)); }
 
+/* s=auto — 고정 목록 대신 규칙으로 고른다. 마감이 지나면 알아서 빠지고
+   새 학회가 들어오므로 배경화면 URL 을 다시 등록할 일이 없다.
+   tier=0123 · days=N · est=1 · field=robotics,ml 로 조건을 좁힐 수 있다. */
+let AUTO = false;
+const AUTO_CFG = {
+  tiers: (QS.get("tier") || "0123").split("").filter(x => /\d/.test(x)).map(Number),
+  days:  Math.max(0, parseInt(QS.get("days") || "0", 10) || 0),   // 0 = 제한 없음
+  est:   QS.get("est") === "1",
+  flds:  (QS.get("field") || "").split(",").map(x => x.trim()).filter(Boolean),
+  all:   QS.get("all") === "1",                                    // 커밋·저널 트랙까지 포함
+};
+function autoOK(c, now){
+  if (c.skip && !AUTO_CFG.all) return false;        // 신규 투고 마감이 아닌 항목
+  if (c.est && !AUTO_CFG.est) return false;
+  if (!AUTO_CFG.tiers.includes(c.tier)) return false;
+  if (AUTO_CFG.flds.length && !AUTO_CFG.flds.includes(c.field)) return false;
+  const m = milestone(c, now);
+  if (!m) return false;
+  if (AUTO_CFG.days && ddays(m.at, now) > AUTO_CFG.days) return false;
+  return true;
+}
+
 function checked(now){
-  return CONF.filter(c => SEL.has(c.idx))
+  return CONF.filter(c => AUTO ? autoOK(c, now) : SEL.has(c.idx))
     .map(c => ({ c, m: milestone(c, now) }))
     .filter(x => x.m)
     .sort((a, b) => a.m.at - b.m.at);
@@ -677,7 +705,8 @@ function tick(){
     const u = getComputedStyle(document.body).getPropertyValue("--u").trim();
     foot.textContent += ` · 뷰포트 ${innerWidth}×${innerHeight} · DPR ${devicePixelRatio}`
       + ` · --u ${u} · 슬롯 ${document.querySelectorAll(".slot").length}`
-      + ` · anim ${ANIM ? "on" : "off"}(${animPref}) · reduce ${MQ_REDUCE.matches}`;
+      + ` · anim ${ANIM ? "on" : "off"}(${animPref}) · reduce ${MQ_REDUCE.matches}`
+      + (AUTO ? ` · auto tier=${AUTO_CFG.tiers.join("")} days=${AUTO_CFG.days || "∞"} est=${AUTO_CFG.est}` : "");
   }
 }
 
@@ -738,8 +767,11 @@ function wire(){
     }
     renderAll(Date.now());
   });
+  const wmode = document.getElementById("wmode");
   const wpos = document.getElementById("wpos"), wsc = document.getElementById("wscale"),
         wscV = document.getElementById("wscaleV");
+  wmode.value = LS.get(LS.wmode, "pick");
+  wmode.onchange = () => { LS.set(LS.wmode, wmode.value); queuePreview(); };
   wpos.value = LS.get(LS.wpos, "tl");
   wsc.value  = LS.get(LS.wsc, "1");
   const paintScale = () => wscV.textContent = (+wsc.value).toFixed(2);
@@ -750,7 +782,8 @@ function wire(){
   // pos·scale 을 빼먹으면 배경화면에서 기본 크기로 커져버린다. 항상 붙인다.
   const wallURL = () => `${location.origin}${location.pathname}`
     + `?mode=wall&pos=${wpos.value}&scale=${(+wsc.value).toFixed(2)}`
-    + `&anim=${ANIM ? 1 : 0}&s=${encodeSel(SEL)}`;
+    + `&anim=${ANIM ? 1 : 0}`
+    + `&s=${wmode.value === "auto" ? "auto" : encodeSel(SEL)}`;
 
   document.getElementById("copyWall").onclick = async () => {
     const u = wallURL();
@@ -849,7 +882,9 @@ function wire(){
   CONF = data.conferences; TOTAL = CONF.length; window.__ver = data.version;
 
   const fromUrl = QS.get("s");
-  SEL = fromUrl ? decodeSel(fromUrl)
+  AUTO = fromUrl === "auto";
+  SEL = AUTO ? new Set()
+       : fromUrl ? decodeSel(fromUrl)
        : (LS.get(LS.sel, null) !== null ? decodeSel(LS.get(LS.sel, "")) : defaults());
   if (!fromUrl && LS.get(LS.sel, null) === null) saveSel();
 

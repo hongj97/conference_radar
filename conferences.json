@@ -90,6 +90,7 @@
 
     { "idx": 9, "id": "eacl-2027-commit", "name": "EACL 2027 커밋", "url": "https://2027.eacl.org/",
       "field": "lang", "tier": 2, "ccf": null, "core": "A", "h5": 77, "pub": "ACL Anthology",
+      "skip": true,
       "est": false, "def": false,
       "abs": null,
       "paper": { "at": "2026-10-11T23:59:00-12:00", "label": "AoE", "sure": true },
@@ -117,6 +118,7 @@
 
     { "idx": 12, "id": "aaai27-journal", "name": "AAAI-27 저널 트랙", "url": "https://aaai.org/conference/aaai/aaai-27/journal-track-call-for-papers/",
       "field": "ml", "tier": 1, "ccf": "A", "core": "A*", "h5": 232, "pub": "AAAI Press",
+      "skip": true,
       "est": false, "def": false,
       "abs": null,
       "paper": { "at": "2026-10-31T23:59:00-12:00", "label": "AoE 추정", "sure": false },
