@@ -167,6 +167,7 @@ html.no-anim .fd.go .tf,html.no-anim .fd.go .bf{animation:none;visibility:hidden
 }
 .hero .who .when{font-family:var(--mono);font-size:.9rem;color:var(--ink);margin-top:5px;font-weight:500}
 .hero .who .when em{font-style:normal;color:var(--muted);font-weight:400;font-size:.82em}
+.hero .who .when.then{color:var(--ink-2);font-weight:400;margin-top:2px;font-size:.84em}
 .hero .rem{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hero .remlbl{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
 .hero .meta{
@@ -541,6 +542,8 @@ function milestone(c, now){                        // 다음으로 닥친 관문
   if (p > now) return { kind: c.abs ? "본문" : "제출", at: p, meta: c.paper, other: null };
   return null;
 }
+// 초록 단계일 때 뒤따르는 본문 마감 — 초록만 보이면 진짜 마감을 놓친다
+const thenDD = (m, now) => m && m.other ? ddays(m.other, now) : null;
 
 /* ── 상태 ──────────────────────────────── */
 const FLD = { robotics: "로보틱스", ml: "ML/DL", vision: "비전", lang: "음성·NLP", med: "의료영상" };
@@ -592,8 +595,9 @@ function renderHero(list, now){
   const dw = d >= 100 ? 3 : d >= 10 ? 2 : 1;       // 자릿수가 바뀔 때만 재생성
   const totalH = Math.floor(Math.max(0, m.at - now) / 36e5);
   const hw = Math.max(2, String(totalH).length);   // 총 시간 자릿수
-  if (heroId !== c.id + m.kind + dw + "h" + hw){
-    heroId = c.id + m.kind + dw + "h" + hw;
+  const td = thenDD(m, now);
+  if (heroId !== c.id + m.kind + dw + "h" + hw + "t" + td){
+    heroId = c.id + m.kind + dw + "h" + hw + "t" + td;
     host.className = "hero";
     host.innerHTML = `
       <div class="lbl">다음 마감</div>
@@ -603,6 +607,7 @@ function renderHero(list, now){
           <span class="kind">${m.kind}${c.est ? " · 예상" : ""}</span>
           <h1><a href="${c.url}" target="_blank" rel="noopener">${c.name}</a></h1>
           <div class="when">${fmtKST(m.at)} <em>KST</em> · <em>원 표기</em> ${m.meta.label}${m.meta.sure ? "" : " ?"}</div>
+          ${m.other ? `<div class="when then">→ 본문 ${fmtKST(m.other)} <em>KST</em> · D-${td}</div>` : ""}
         </div>
       </div>
       <div class="rem"><span class="remlbl">남은 시간</span><span class="flipset" id="remF"></span></div>
@@ -637,7 +642,7 @@ function renderStack(list, now){
       <span class="dd"><small>D-</small>${d}</span>
       <div class="info">
         <div class="nm">${c.name}<span class="tchip${c.tier===0?" kr":""}">${c.tier===0?"국내":"T"+c.tier}</span></div>
-        <div class="sub">${m.kind} <strong>${fmtKST(m.at)}</strong> <em>KST${c.est ? " · 예상" : ""}</em></div>
+        <div class="sub">${m.kind} <strong>${fmtKST(m.at)}</strong> <em>KST${c.est ? " · 예상" : ""}</em>${m.other ? ` <em>· 본문 D-${thenDD(m, now)}</em>` : ""}</div>
       </div>
       <div class="cd"><b data-at="${m.at}">${hms(m.at - now)}</b><i>남은 시간</i></div>
     </div>`;
@@ -669,7 +674,7 @@ function renderAll(now){
       <input type="checkbox" data-i="${c.idx}" ${on ? "checked" : ""} id="cb${c.idx}">
       <label class="t" for="cb${c.idx}">
         <div class="n">${c.name}</div>
-        <div class="d">${tierTag(c.tier)} · ${c.est ? "예상" : "확정"} · ${m ? m.kind + " " + fmtKST(m.at) : "종료"}</div>
+        <div class="d">${tierTag(c.tier)} · ${c.est ? "예상" : "확정"} · ${m ? m.kind + " " + fmtKST(m.at) + (m.other ? " · 본문 " + fmtKST(m.other) : "") : "종료"}</div>
       </label>
       <span class="rt">${m ? "D-" + d : "—"}</span>
     </li>`;
@@ -738,7 +743,7 @@ function notify(force){
   const src = (force ? list : hit).slice(0, 6);
   if (!src.length) return;
   const body = src.map(({ c, m }) =>
-    `${c.name} ${m.kind} D-${ddays(m.at, now)} · ${fmtKSTplain(m.at)} KST`).join("\n");
+    `${c.name} ${m.kind} D-${ddays(m.at, now)} · ${fmtKSTplain(m.at)} KST${m.other ? ` (본문 D-${thenDD(m, now)})` : ""}`).join("\n");
   const n = new Notification(`마감 임박 ${src.length}건`, { body, tag: "conf-radar", icon: "./icon-192.png", requireInteraction: false });
   n.onclick = () => { window.focus(); n.close(); };
 }
