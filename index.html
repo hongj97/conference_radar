@@ -660,7 +660,7 @@ function renderAll(now){
     if (filters.past && !milestone(c, now)) return false;
     return true;
   }).sort((a, b) => Date.parse(a.paper.at) - Date.parse(b.paper.at));
-  document.getElementById("allN").textContent = `${vis.length} / ${TOTAL}`;
+  document.getElementById("allN").textContent = `${vis.length} / ${CONF.length}`;
   ul.innerHTML = vis.map(c => {
     const m = milestone(c, now);
     const d = m ? ddays(m.at, now) : null;
@@ -882,7 +882,8 @@ function wire(){
   }
   const res = await fetch("./conferences.json", { cache: "no-cache" });
   const data = await res.json();
-  CONF = data.conferences; TOTAL = CONF.length; window.__ver = data.version;
+  // TOTAL 은 비트마스크 길이 — 마감 지난 항목을 지워 idx 에 빈칸이 생겨도 최대 idx 기준으로 잡는다
+  CONF = data.conferences; TOTAL = Math.max(-1, ...CONF.map(c => c.idx)) + 1; window.__ver = data.version;
 
   const fromUrl = QS.get("s");
   AUTO = fromUrl === "auto";
