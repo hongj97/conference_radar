@@ -1,11 +1,11 @@
 {
   "version": "2026-11-09",
   "_schema": {
-    "idx": "영구 고정 번호. 배경화면 비트마스크가 이 값에 의존하므로 절대 재사용·재정렬 금지. 새 학회는 지금까지 쓴 최대 번호(삭제된 것 포함, 현재 53)의 다음 번호를 부여. 마감 지난 항목은 삭제해도 되며 번호는 비워둔다.",
+    "idx": "영구 고정 번호. 배경화면 비트마스크가 이 값에 의존하므로 절대 재사용·재정렬 금지. 새 학회는 지금까지 쓴 최대 번호(삭제된 것 포함, 현재 56)의 다음 번호를 부여. 마감 지난 항목은 삭제해도 되며 번호는 비워둔다.",
     "at": "ISO 8601 + UTC 오프셋. AoE = -12:00, PST = -08:00, PDT = -07:00",
     "sure": "true = 공식 CFP에 시각이 명시됨 / false = AoE 23:59로 추정",
     "est": "true = 마감일 자체가 공식 발표 전 추정치",
-    "def": "true = 초기 체크 상태 (T1·T2 확정 6건)"
+    "def": "true = 초기 체크 상태 (T1·T2 확정 6건 + 국내 2건)"
   },
   "conferences": [
     { "idx": 13, "id": "l4dc-2027", "name": "L4DC 2027", "url": "https://l4dc2027.control.ee.ethz.ch/",
@@ -342,6 +342,33 @@
       "paper": { "at": "2027-07-23T23:59:00-12:00", "label": "AoE 추정", "sure": false },
       "pages": "—", "event": "2027 하반기", "venue": "장소 미발표",
       "note": "2027 CFP·장소 미발표 · 2026회차(7/24 AoE 마감, 12월 산타클라라) 기준 추정",
-      "tierNote": "휴머노이드 전문 IEEE-RAS 플래그십 · h5·CORE 미확인" }
+      "tierNote": "휴머노이드 전문 IEEE-RAS 플래그십 · h5·CORE 미확인" },
+
+    { "idx": 54, "id": "kroc-2027", "name": "KRoC 2027", "url": "https://kros.org/Conference/ConferenceView.asp?AC=0&CODE=CC20260604",
+      "field": "robotics", "tier": 0, "ccf": null, "core": null, "h5": null, "pub": "KRoC 프로시딩",
+      "est": false, "def": true,
+      "abs": null,
+      "paper": { "at": "2026-11-26T23:59:00+09:00", "label": "시각 미표기 · 23:59 KST 가정", "sure": false },
+      "pages": "—", "event": "2027.2.15–17", "venue": "홍천 소노벨 비발디파크",
+      "note": "일반 논문 접수 마감 · 연장 없음 명시 · 선정 공지 12/30 · 사전등록 1/7–20 · 논문지 동시제출 트랙(9/10)은 종료",
+      "tierNote": "국내 로봇 분야 최대 학술대회(한국로봇학회)" },
+
+    { "idx": 55, "id": "ipiu-2027", "name": "IPIU 2027", "url": "https://www.ipiu.or.kr/?act=info.page&pcode=sub02",
+      "field": "vision", "tier": 0, "ccf": null, "core": null, "h5": null, "pub": "IPIU 프로시딩",
+      "est": false, "def": true,
+      "abs": null,
+      "paper": { "at": "2026-12-18T23:59:00+09:00", "label": "시각 미표기 · 23:59 KST 가정", "sure": false },
+      "pages": "2–6p", "event": "2027.2.17–19", "venue": "메종 글래드 제주",
+      "note": "제39회 영상처리 및 이해에 관한 워크샵 · 심사 결과 1/18 · 한국컴퓨터비전학회 주관",
+      "tierNote": "국내 컴퓨터비전 분야 대표 워크샵" },
+
+    { "idx": 56, "id": "icros-2027", "name": "ICROS 2027", "url": "https://icros.org/Conference/ConferenceView.asp?AC=1&CODE=CS20251103&B_CATE=bbc2",
+      "field": "robotics", "tier": 0, "ccf": null, "core": null, "h5": null, "pub": "ICROS 프로시딩",
+      "est": true, "def": false,
+      "abs": null,
+      "paper": { "at": "2027-04-25T23:59:00+09:00", "label": "KST 추정", "sure": false },
+      "pages": "—", "event": "2027.6.30–7.3", "venue": "고성 소노캄 델피노",
+      "note": "제42회 제어·로봇·시스템학회 학술대회 · 마감 미발표 — 2026회차(4/26, 5/10로 연장) 기준 추정",
+      "tierNote": "국내 제어·로봇 분야 연례 학술대회(제어·로봇·시스템학회)" }
   ]
 }
